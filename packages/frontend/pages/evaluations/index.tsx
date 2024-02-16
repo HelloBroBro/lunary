@@ -2,24 +2,26 @@ import OrgUserBadge from "@/components/Blocks/OrgUserBadge"
 import Paywall from "@/components/Layout/Paywall"
 import { useEvaluations } from "@/utils/dataHooks"
 import {
-  ActionIcon,
+  Alert,
+  Anchor,
   Badge,
   Button,
   Card,
   Container,
   Group,
   Loader,
-  Menu,
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "@mantine/core"
 import {
-  IconCopy,
+  IconChecklist,
   IconDatabase,
-  IconDotsVertical,
   IconFlask2Filled,
-  IconPlus,
+  IconInfoCircle,
+  IconRefresh,
+  IconTable,
 } from "@tabler/icons-react"
 import Link from "next/link"
 import { useRouter } from "next/router"
@@ -36,10 +38,6 @@ export default function Evaluations() {
 
   if (!isLoading && evaluations.length === 0) {
     router.push("/evaluations/new")
-  }
-
-  if (isLoading) {
-    return <Loader />
   }
 
   return (
@@ -62,20 +60,14 @@ export default function Evaluations() {
 
             <Group>
               <Button
-                leftSection={<IconDatabase size={12} />}
-                variant="light"
-                component={Link}
-                href="/datasets"
-              >
-                Datasets
-              </Button>
-              <Button
-                leftSection={<IconPlus size={12} />}
+                leftSection={<IconFlask2Filled size={12} />}
                 color="blue"
+                variant="gradient"
+                gradient={{ from: "violet", to: "cyan" }}
                 component={Link}
                 href="/evaluations/new"
               >
-                New evaluation
+                Run Evaluation
               </Button>
             </Group>
           </Group>
@@ -84,55 +76,110 @@ export default function Evaluations() {
             Compare prompts with different models to craft the perfect prompt.
           </Text>
 
-          <Stack gap="xl">
-            {evaluations.map((evaluation) => (
-              <Card key={evaluation.id} p="lg" withBorder>
-                <Group justify="space-between">
-                  <Stack>
-                    <Group>
-                      <Title
-                        order={3}
-                        size={16}
-                        onClick={() =>
-                          router.push(`/evaluations/${evaluation.id}`)
-                        }
-                        style={{ cursor: "pointer" }}
-                      >
-                        {evaluation.name}
-                      </Title>
-                      <Badge variant="light" radius="sm" color="teal" size="sm">
-                        Complete
-                      </Badge>
-                    </Group>
-                    <OrgUserBadge userId={evaluation.ownerId} />
-                  </Stack>
+          <Title order={3}>Manage</Title>
 
-                  <Group>
-                    <Button
-                      onClick={() =>
-                        router.push(`/evaluations/${evaluation.id}`)
-                      }
-                      variant="light"
-                    >
-                      Results
-                    </Button>
-                    <Menu withArrow shadow="sm" position="bottom-end">
-                      <Menu.Target>
-                        <ActionIcon variant="transparent">
-                          <IconDotsVertical size={16} />
-                        </ActionIcon>
-                      </Menu.Target>
-                      <Menu.Dropdown>
-                        <Menu.Item leftSection={<IconCopy size={16} />}>
-                          Edit & Re-Run
-                        </Menu.Item>
-                      </Menu.Dropdown>
-                    </Menu>
+          <Alert icon={<IconInfoCircle />}>
+            Datasets and checklists are the building blocks of evaluations.
+            <br />
+            Combine them in the dashboard{" "}
+            <Anchor size="sm" href="https://lunary.ai/docs/features/evals/sdk">
+              or the SDK
+            </Anchor>
+            .
+          </Alert>
+
+          <Group>
+            <Tooltip label="Datasets are collections of prompts that you can use as test-cases">
+              <Button
+                leftSection={<IconDatabase size={12} />}
+                component={Link}
+                color="blue"
+                href="/datasets"
+              >
+                Datasets
+              </Button>
+            </Tooltip>
+            <Tooltip label="Checklists are collections of assertions that you can use to define what a success is.">
+              <Button
+                leftSection={<IconChecklist size={12} />}
+                color="blue"
+                component={Link}
+                href="/evaluations/checklists"
+              >
+                Checklists
+              </Button>
+            </Tooltip>
+          </Group>
+
+          <Title order={3} mt="lg">
+            History
+          </Title>
+
+          {isLoading ? (
+            <Loader />
+          ) : (
+            <Stack gap="xl">
+              {evaluations.map((evaluation) => (
+                <Card key={evaluation.id} p="lg" withBorder>
+                  <Group justify="space-between">
+                    <Stack>
+                      <Group>
+                        <Title
+                          order={3}
+                          size={16}
+                          onClick={() =>
+                            router.push(`/evaluations/${evaluation.id}`)
+                          }
+                          style={{ cursor: "pointer" }}
+                        >
+                          {evaluation.name}
+                        </Title>
+                        <Badge
+                          variant="light"
+                          radius="sm"
+                          color="teal"
+                          size="sm"
+                        >
+                          Complete
+                        </Badge>
+                      </Group>
+
+                      <Group>
+                        {evaluation.models?.map((model, index) => (
+                          <Badge key={index} variant="light" color="blue">
+                            {model}
+                          </Badge>
+                        ))}
+                      </Group>
+                      <OrgUserBadge userId={evaluation.ownerId} />
+                    </Stack>
+
+                    <Group>
+                      <Button
+                        component={Link}
+                        size="xs"
+                        href={`/evaluations/${evaluation.id}`}
+                        leftSection={<IconTable size={12} />}
+                        variant="light"
+                      >
+                        Results
+                      </Button>
+                      <Button
+                        variant="light"
+                        color="teal"
+                        size="xs"
+                        leftSection={<IconRefresh size={12} />}
+                        component={Link}
+                        href={`/evaluations/new?clone=${evaluation.id}`}
+                      >
+                        Again
+                      </Button>
+                    </Group>
                   </Group>
-                </Group>
-              </Card>
-            ))}
-          </Stack>
+                </Card>
+              ))}
+            </Stack>
+          )}
         </Stack>
       </Container>
     </Paywall>

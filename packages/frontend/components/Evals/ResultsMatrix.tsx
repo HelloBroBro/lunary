@@ -14,16 +14,28 @@ function getResultForVariation(
   model: string,
   evalResults,
 ): any | undefined {
-  return evalResults.find(
+  const result = evalResults.find(
     (result) =>
       (promptId ? result.promptId === promptId : true) &&
       (model ? result.model === model : true) &&
+      (Object.keys(variables).length === 0
+        ? Object.keys(result.variables).length === 0
+        : true) &&
       Object.keys(variables).every(
-        (variable) => result.variables[variable] === variables[variable],
+        (variable) =>
+          result.variables.hasOwnProperty(variable) &&
+          result.variables[variable] === variables[variable],
       ),
   )
-}
 
+  if (!result) {
+    console.log(`No result found for`, promptId, variables, model)
+  } else {
+    console.log(`Found result for`, promptId, variables, model)
+  }
+
+  return result
+}
 const getAggegateForVariation = (
   promptId: string,
   model: string,
@@ -62,11 +74,11 @@ const getVariableVariations = (results) => {
   return uniqueVariations as { [key: string]: string }[]
 }
 
-const getPromptModelVariations = (results, groupBy = "none") => {
+const getPromptModelVariations = (results) => {
   let variations = results.map((result) => ({
     promptContent: result.promptContent,
-    promptId: groupBy !== "model" ? result.promptId : null,
-    model: groupBy !== "prompt" ? result.model : "",
+    promptId: result.promptId,
+    model: result.model,
   }))
 
   const uniqueVariations = Array.from(
@@ -116,14 +128,12 @@ function ResultDetails({ details }) {
   )
 }
 
-export default function ResultsMatrix({ data, groupBy = "none" }) {
+export default function ResultsMatrix({ data }) {
   const variableVariations = getVariableVariations(data)
 
-  const pmVariations = getPromptModelVariations(data, groupBy)
+  const pmVariations = getPromptModelVariations(data)
 
   const variables = Array.from(new Set(variableVariations.flatMap(Object.keys)))
-
-  console.log(data)
 
   return (
     <Stack>
@@ -131,7 +141,9 @@ export default function ResultsMatrix({ data, groupBy = "none" }) {
         <table className={classes["matrix-table"]}>
           <thead>
             <tr>
-              <th colSpan={variables.length}>Variables</th>
+              {!!variables.length && (
+                <th colSpan={variables.length}>Variables</th>
+              )}
               <th colSpan={data.length}>Results</th>
             </tr>
             <tr>

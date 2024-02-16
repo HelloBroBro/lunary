@@ -1,7 +1,6 @@
 import Steps from "@/components/Blocks/Steps"
-import FilterPicker from "@/components/Filters/Picker"
 import Paywall from "@/components/Layout/Paywall"
-import { useDatasets, useProject } from "@/utils/dataHooks"
+import { useChecklists, useDatasets, useProject } from "@/utils/dataHooks"
 import errorHandler from "@/utils/errors"
 import { fetcher } from "@/utils/fetcher"
 
@@ -9,7 +8,6 @@ import {
   Anchor,
   Badge,
   Button,
-  Chip,
   Container,
   Group,
   MultiSelect,
@@ -21,10 +19,10 @@ import {
   Tooltip,
 } from "@mantine/core"
 import { IconFlask2Filled } from "@tabler/icons-react"
-import Link from "next/link"
 import { useRouter } from "next/router"
-import { useState } from "react"
-import { Evaluation, FilterLogic, MODELS, Prompt } from "shared"
+import { useEffect, useRef, useState } from "react"
+import { MODELS } from "shared"
+import { ChecklistModal } from "./checklists"
 
 const FEATURE_LIST = [
   "Define assertions to test variations of prompts",
@@ -33,10 +31,11 @@ const FEATURE_LIST = [
 ]
 
 export default function NewEvaluation() {
-  const [prompts, setPrompts] = useState<Prompt[]>([])
-  const [checks, setChecks] = useState<FilterLogic>(["AND"])
+  const [checklistModal, setChecklistModal] = useState(false)
+
   const [models, setModels] = useState(["gpt-4-turbo-preview", "gpt-3.5-turbo"])
   const [datasetId, setDatasetId] = useState<string | null>()
+  const [checklistId, setChecklistId] = useState<string | null>()
 
   const [loading, setLoading] = useState(false)
 
@@ -45,13 +44,42 @@ export default function NewEvaluation() {
   const router = useRouter()
 
   const { project } = useProject()
-  const { datasets } = useDatasets()
+
+  const { datasets, isLoading: datasetsLoading } = useDatasets()
+  const { checklists, loading: checklistsLoading } = useChecklists("evaluation")
+
+  // make sure to only fetch once
+  const ref = useRef({ done: false })
+
+  useEffect(() => {
+    if (!project || ref.current?.done || datasetsLoading || checklistsLoading)
+      return
+
+    const { clone } = router.query
+
+    if (clone) {
+      ref.current.done = true
+      const fetchEval = async () => {
+        const cloneEval = await fetcher.get(
+          `/evaluations/${clone}?projectId=${project?.id}`,
+        )
+
+        if (!cloneEval) return
+
+        setDatasetId(cloneEval.datasetId)
+        setModels(cloneEval.models)
+        setChecklistId(cloneEval.checklistId)
+      }
+
+      fetchEval()
+    }
+  }, [project, router.query])
 
   async function startEval() {
     setLoading(true)
 
-    const timeEstimate = models.length * prompts.length * 5
-    console.log("timeEstimate", timeEstimate)
+    const timeEstimate = models.length * 3 * 5
+
     setProgress(0)
 
     let interval = setInterval(() => {
@@ -62,7 +90,7 @@ export default function NewEvaluation() {
 
     const res = await errorHandler(
       fetcher.post(`/evaluations?projectId=${project.id}`, {
-        arg: { datasetId, checks, models },
+        arg: { datasetId, models, checklistId },
       }),
     )
 
@@ -75,13 +103,7 @@ export default function NewEvaluation() {
     router.push(`/evaluations/${res.evaluationId}`)
   }
 
-  const evaluation: Evaluation = {
-    prompts,
-    models,
-    checks,
-  }
-
-  const canStartEvaluation = datasetId && models.length > 0 && checks.length > 1
+  const canStartEvaluation = datasetId && models.length > 0 && checklistId
 
   return (
     <Paywall
@@ -91,15 +113,24 @@ export default function NewEvaluation() {
       description="Experiment with different models and parameters to find the best performing combinations."
       list={FEATURE_LIST}
     >
+      <ChecklistModal
+        open={checklistModal}
+        onClose={(id) => {
+          setChecklistModal(false)
+          if (id) setChecklistId(id)
+        }}
+      />
       <Container>
         <Stack align="right" gap="lg">
-          <Group align="center" justify="space-between">
-            <Group align="center">
-              <Title>Evaluations</Title>
-              <Badge variant="light" color="violet">
-                Alpha
-              </Badge>
-            </Group>
+          <Anchor href="/evaluations">← Back to Evaluations</Anchor>
+          <Group align="center">
+            <Title>Magic Evaluation</Title>
+            <Badge variant="light" color="violet">
+              Alpha
+            </Badge>
+            <Badge variant="light" color="blue">
+              no-code
+            </Badge>
           </Group>
 
           <Text size="xl" mb="md">
@@ -109,7 +140,7 @@ export default function NewEvaluation() {
           <Steps>
             <Steps.Step n={1} label="Dataset">
               <Text size="lg" mb="md" mt={-6}>
-                Add prompts with variations of variables to test.
+                Prompts with variations of variables to test.
               </Text>
 
               <Select
@@ -121,22 +152,12 @@ export default function NewEvaluation() {
                 }))}
               />
               <Anchor href="/datasets/new" mt="sm">
-                + new dataset
+                + new
               </Anchor>
-
-              <Group mt="xl">
-                <Chip.Group>
-                  {evaluation.prompts?.map((prompt, i) => (
-                    <Chip color="blue" key={i}>
-                      Prompt #{i + 1}
-                    </Chip>
-                  ))}
-                </Chip.Group>
-              </Group>
             </Steps.Step>
             <Steps.Step n={2} label="Models">
               <Text size="lg" mb="md" mt={-6}>
-                Select the models you want to compare.
+                LLMs you want to compare.
               </Text>
               <MultiSelect
                 data={MODELS.map((model) => ({
@@ -148,19 +169,32 @@ export default function NewEvaluation() {
                 onChange={(newModels) => setModels(newModels)}
               />
             </Steps.Step>
-            <Steps.Step n={3} label="Checks">
+            <Steps.Step n={3} label="Checklists">
               <Text size="lg" mb="md" mt={-6}>
-                Define the checks that will result in a{" "}
+                Assertions against which to run the dataset that will result in
+                a{" "}
                 <Text c="green" span fw="bold">
                   PASS
                 </Text>
                 .
               </Text>
-              <FilterPicker
+              <Select
+                placeholder="Select a preset checklist or create a new one."
+                onChange={(datasetId) => setChecklistId(datasetId)}
+                value={checklistId}
+                data={checklists?.map((dataset) => ({
+                  label: dataset.slug,
+                  value: dataset.id,
+                }))}
+              />
+              <Anchor href="#" mt="sm" onClick={() => setChecklistModal(true)}>
+                + new
+              </Anchor>
+              {/* <FilterPicker
                 restrictTo={(filter) => !filter.disableInEvals}
                 value={checks}
                 onChange={(checks) => setChecks(checks)}
-              />
+              /> */}
             </Steps.Step>
           </Steps>
 

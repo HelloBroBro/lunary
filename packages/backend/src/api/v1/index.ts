@@ -13,6 +13,7 @@ import projectUsers from "./external-users"
 import projects from "./projects"
 import radars from "./radars"
 import evaluations from "./evaluations"
+import checklists from "./checklists"
 
 const v1 = new Router({
   prefix: "/v1",
@@ -23,11 +24,10 @@ v1.get("/", async (ctx) => {
 })
 
 v1.get("/health", async (ctx) => {
-  const [testUser] =
-    await sql`select * from account where email = 'test@test.com'`
+  const [res] = await sql`select 1`
 
-  if (!testUser) {
-    ctx.throw(500, "No test user found")
+  if (!res) {
+    ctx.throw(500, "Cound't reach the db")
   }
   ctx.body = "Ok"
 })
@@ -43,5 +43,6 @@ v1.use(templateVersions.routes())
 v1.use(filters.routes())
 v1.use(evaluations.routes())
 v1.use(projectUsers.routes())
+v1.use(checklists.routes())
 
 export default v1

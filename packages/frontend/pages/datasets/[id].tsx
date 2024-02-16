@@ -1,6 +1,11 @@
 import PromptVariableEditor from "@/components/Blocks/PromptVariableEditor"
 import { PromptEditor } from "@/components/Prompts/PromptEditor"
-import { useDatasets, useDataset } from "@/utils/dataHooks"
+import {
+  useDataset,
+  useDatasetPrompt,
+  useDatasetPromptVariation,
+} from "@/utils/dataHooks"
+import { formatCompactFromNow } from "@/utils/format"
 import { usePromptVariables } from "@/utils/promptsHooks"
 import {
   ActionIcon,
@@ -17,126 +22,180 @@ import {
   Textarea,
   Title,
 } from "@mantine/core"
-import { useListState } from "@mantine/hooks"
-import { notifications } from "@mantine/notifications"
-import { IconPlus, IconCheck, IconTrash } from "@tabler/icons-react"
+import { useDebouncedState } from "@mantine/hooks"
+import { modals } from "@mantine/modals"
+import { IconCircleMinus, IconPlus } from "@tabler/icons-react"
 import { usePathname } from "next/navigation"
 import { useRouter } from "next/router"
-import { generateSlug } from "random-word-slugs"
 import { useEffect, useState } from "react"
 
-const DEFAULT_PROMPT = [
-  {
-    messages: [
-      {
-        role: "system",
-        content: "You are a helpful assistant.",
-      },
-      {
-        role: "user",
-        content: "",
-      },
-    ],
-    variations: [
-      {
-        variables: {},
-      },
-    ],
-  },
-]
+function PromptVariation({ i, variationId, variables, onDelete, markSaved }) {
+  const { variation, update, remove, mutate } =
+    useDatasetPromptVariation(variationId)
 
-function PromptTab({ prompt, setPrompt }) {
-  const { messages, variations } = prompt
+  const { prompt } = useDatasetPrompt(variation?.promptId)
 
-  const promptVariables = usePromptVariables(messages)
+  const hasVariables = Object.keys(variables).length > 0
 
-  function setMessages(messages) {
-    const newPrompt = { ...prompt, messages }
-    setPrompt(newPrompt)
-  }
+  const [debouncedVariation, setDebouncedVariation] = useDebouncedState(
+    null,
+    500,
+  )
 
-  function setVariableValue(
-    variableName: string,
-    value: string,
-    index: number,
-  ) {
-    const newVariations = [...variations]
-    const newVariable = { [variableName]: value }
-    newVariations[index] = {
-      ...newVariations[index],
-      variables: { ...newVariations[index].variables, ...newVariable },
-    }
-    setPrompt({ ...prompt, variations: newVariations })
-  }
-
-  function setIdealOutput(idealOutput) {
-    const newPrompt = { ...prompt, idealOutput }
-    setPrompt(newPrompt)
-  }
+  // console.log("variables", variation?.variables)
 
   useEffect(() => {
-    let i = 0
-    const newVariations = []
-    for (const variation of variations) {
-      const filteredVariables = {}
+    if (debouncedVariation) {
+      update(debouncedVariation, {
+        revalidate: false,
+        optimisticData: (data) => ({ ...data, ...debouncedVariation }),
+        onSuccess: () => {
+          markSaved()
+        },
+      })
+    }
+  }, [debouncedVariation])
 
-      for (const key of Object.keys(promptVariables)) {
-        if (promptVariables[key] === "") {
-          filteredVariables[key] = variation.variables[key]
-        }
+  useEffect(() => {
+    if (!variation || !variables) return
+
+    Object.keys(variables).forEach((key) => {
+      if (typeof variation.variables[key] === "undefined") {
+        setVariableValue(key, "")
       }
+    })
 
-      newVariations.push({ ...variation, variables: filteredVariables })
-      i++
+    Object.keys(variation.variables).forEach((key) => {
+      if (typeof variables[key] === "undefined") {
+        setVariableValue(key, undefined)
+      }
+    })
+  }, [variables])
+
+  const setVariableValue = (variable, value) => {
+    let updatedVariables = { ...variation?.variables }
+
+    if (typeof value === "undefined") {
+      delete updatedVariables[variable]
+    } else {
+      updatedVariables[variable] = value
     }
 
-    setPrompt({
-      ...prompt,
-      variations: newVariations,
-    })
-  }, [promptVariables])
+    const updatedVariation = { ...variation, variables: updatedVariables }
+    mutate(updatedVariation)
+    setDebouncedVariation(updatedVariation)
+  }
+
+  const setIdealOutput = (idealOutput) => {
+    const updatedVariation = { ...variation, idealOutput }
+    mutate(updatedVariation)
+    setDebouncedVariation(updatedVariation)
+  }
+
+  return (
+    <Fieldset
+      variant="filled"
+      pos="relative"
+      legend={hasVariables && `Variation ${i + 1}`}
+    >
+      <Stack>
+        <PromptVariableEditor
+          variables={variation?.variables}
+          updateVariable={(variable, value) => {
+            setVariableValue(variable, value)
+          }}
+        />
+
+        <Textarea
+          label="Ideal output (optional)"
+          description="Useful for assessing the proximity of the LLM response to an anticipated output."
+          required={false}
+          autosize
+          maxRows={6}
+          minRows={3}
+          value={variation?.idealOutput || ""}
+          onChange={(e) => setIdealOutput(e.target.value)}
+        />
+      </Stack>
+      {prompt?.variations?.length > 1 && (
+        <ActionIcon
+          onClick={async () => {
+            onDelete()
+            await remove()
+          }}
+          pos="absolute"
+          top={-25}
+          right={-15}
+          color="red"
+          variant="subtle"
+        >
+          <IconCircleMinus size="12" />
+        </ActionIcon>
+      )}
+    </Fieldset>
+  )
+}
+
+function PromptTab({ promptId, onDelete, markSaved }) {
+  const {
+    prompt,
+    update,
+    loading,
+    remove,
+    insertVariation,
+    isInsertingVariation,
+    mutate,
+  } = useDatasetPrompt(promptId)
+
+  const promptVariables = usePromptVariables(prompt?.messages)
+
+  const [debouncedMessages, setDebouncedMessages] = useDebouncedState(null, 500)
+
+  useEffect(() => {
+    if (debouncedMessages) {
+      update(
+        { messages: debouncedMessages },
+        {
+          onSuccess: () => {
+            markSaved()
+          },
+        },
+      )
+    }
+  }, [debouncedMessages])
 
   const hasVariables = Object.keys(promptVariables).length > 0
+
+  if (loading) {
+    return <Loader />
+  }
 
   return (
     <Stack>
       <PromptEditor
-        onChange={(value) => setMessages(value)}
-        value={messages}
+        onChange={(value) => {
+          mutate({ ...prompt, messages: value })
+          setDebouncedMessages(value)
+        }}
+        value={prompt?.messages}
         isText={false}
       />
-      {variations?.map((variation, i) => (
-        <Fieldset
-          variant="filled"
+      {prompt?.variations?.map((variation, i) => (
+        <PromptVariation
           key={i}
-          legend={hasVariables && `Variation ${i + 1}`}
-        >
-          <Stack>
-            <PromptVariableEditor
-              variables={variation.variables}
-              updateVariable={(variable, value) => {
-                setVariableValue(variable, value, i)
-                // const oldVariables = variations[i].variables
-                // const newVariables = {
-                //   ...oldVariables,
-                //   [variable]: value,
-                // }
-                // handlers.setItemProp(i, "variables", newVariables)
-              }}
-            />
-
-            <Textarea
-              label="Ideal output (optional)"
-              description="Useful for assessing the proximity of the LLM response to an anticipated output."
-              required={false}
-              autosize
-              maxRows={6}
-              minRows={3}
-              value={variation.idealOutput}
-              onChange={(e) => setIdealOutput(e.target.value)}
-            />
-          </Stack>
-        </Fieldset>
+          i={i}
+          variables={promptVariables}
+          markSaved={markSaved}
+          variationId={variation.id}
+          onDelete={() => {
+            mutate({
+              ...prompt,
+              variations: prompt.variations.filter(
+                (v) => v.id !== variation.id,
+              ),
+            })
+          }}
+        />
       ))}
       {hasVariables && (
         <>
@@ -148,20 +207,45 @@ function PromptTab({ prompt, setPrompt }) {
       {hasVariables && (
         <Button
           variant="outline"
-          onClick={() => {
-            const newVariation = { variables: promptVariables }
-            setPrompt({ ...prompt, variations: [...variations, newVariation] })
-
-            // const newVariables = promptVariables
-            // const newVariations = [{ ...variations, variables: newVariables }]
-            // variations.push(newVariations)
-
-            // setPrompt({ ...prompt, variations: newVariations })
+          loading={isInsertingVariation}
+          onClick={async () => {
+            const variation = await insertVariation({ variables: {}, promptId })
+            mutate({
+              ...prompt,
+              variations: [...prompt.variations, variation],
+            })
           }}
         >
-          Add variation
+          Add variable variation
         </Button>
       )}
+
+      <Button
+        size="compact-sm"
+        onClick={async () => {
+          modals.openConfirmModal({
+            title: "Please confirm your action",
+            confirmProps: { color: "red" },
+            children: (
+              <Text size="sm">
+                Are you sure you want to delete this prompt? This action cannot
+                be undone and the prompt data will be lost forever.
+              </Text>
+            ),
+            labels: { confirm: "Confirm", cancel: "Cancel" },
+
+            onConfirm: async () => {
+              onDelete()
+              await remove()
+            },
+          })
+        }}
+        color="red"
+        variant="subtle"
+        w="fit-content"
+      >
+        Remove prompt
+      </Button>
     </Stack>
   )
 }
@@ -169,42 +253,32 @@ function PromptTab({ prompt, setPrompt }) {
 export default function NewDataset() {
   const router = useRouter()
   const pathname = usePathname()
-  const {
-    insert: insertDataset,
-    isInserting,
-    isUpdating,
-    update: updateDataset,
-  } = useDatasets()
 
-  const [activeTab, setActiveTab] = useState<string | null>("prompt-1")
+  const [activePrompt, setActivePrompt] = useState<string | null>(null)
 
   const datasetId = router.query.id as string
-  const { dataset, isLoading } = useDataset(datasetId)
+  const { dataset, loading, insertPrompt, mutate, isInsertingPrompt } =
+    useDataset(datasetId)
 
-  const [prompts, handlers] = useListState()
-
-  useEffect(() => {
-    if (!isEdit) {
-      handlers.setState(DEFAULT_PROMPT)
-      return
-    }
-    if (dataset?.prompts) {
-      const newPrompts = dataset?.prompts?.map((prompt) => ({
-        id: prompt.id,
-        messages: prompt.content,
-        variations: prompt.variations,
-      }))
-
-      handlers.setState(newPrompts)
-    }
-  }, [dataset])
-
-  console.log(prompts)
+  const [lastSaved, setLastSaved] = useState<number>(dataset?.updatedAt)
 
   const isEdit = pathname?.split("/")?.at(-1) !== "new"
-  const title = isEdit ? "Edit Dataset" : "Create Dataset"
+  const title = isEdit ? "Dataset: " + dataset?.slug : "Create Dataset"
 
-  if (isLoading) {
+  useEffect(() => {
+    if (
+      (dataset?.prompts.length > 0 && !activePrompt) ||
+      (activePrompt && !dataset?.prompts.find((p) => p.id === activePrompt))
+    ) {
+      setActivePrompt(dataset.prompts[0].id)
+    }
+  }, [dataset, activePrompt])
+
+  function markSaved() {
+    setLastSaved(Date.now())
+  }
+
+  if (loading) {
     return <Loader />
   }
 
@@ -221,93 +295,84 @@ export default function NewDataset() {
           ← Back
         </Anchor>
         <Stack>
-          <Group align="center">
-            <Title>{title}</Title>
-            <Badge variant="light" color="violet">
-              Alpha
-            </Badge>
+          <Group>
+            <Group align="center">
+              <Title>{title}</Title>
+              <Badge variant="light" color="violet">
+                Alpha
+              </Badge>
+            </Group>
+            {lastSaved && (
+              <Text size="sm" c="dimmed">
+                Last saved {formatCompactFromNow(lastSaved)}
+              </Text>
+            )}
           </Group>
           <Text size="lg" mb="md">
-            Datasets are collections of prompts that you can use as a basis for
+            A dataset is a collection of prompts that you can use as a basis for
             evaluations.
           </Text>
         </Stack>
 
-        <Tabs value={activeTab} onChange={setActiveTab} variant="pills">
-          <Group justify="space-between" mb="lg" wrap={false}>
+        <Tabs value={activePrompt} onChange={setActivePrompt} variant="pills">
+          <Group justify="space-between" mb="lg" wrap="nowrap">
             <Tabs.List>
-              {prompts.map((_, i) => (
-                <Group key={i} pos="relative">
-                  <Tabs.Tab value={`prompt-${i + 1}`}>
-                    {`Prompt ${i + 1}`}
-                  </Tabs.Tab>
-                  <ActionIcon
-                    style={{ zIndex: 3 }}
-                    pos="absolute"
-                    right={-10}
-                    top={-10}
-                    color="red"
-                    variant="subtle"
-                    onClick={() => handlers.remove(i)}
-                  >
-                    <IconTrash size={16} />
-                  </ActionIcon>
-                </Group>
+              {dataset?.prompts.map((prompt, i) => (
+                <Tabs.Tab value={prompt.id} key={i}>
+                  {`Prompt ${i + 1}`}
+                </Tabs.Tab>
               ))}
             </Tabs.List>
 
             <Button
               leftSection={<IconPlus size={12} />}
               variant="outline"
-              onClick={() => handlers.append(...DEFAULT_PROMPT)}
+              loading={isInsertingPrompt}
+              onClick={async () => {
+                const prompt = await insertPrompt(
+                  { datasetId },
+                  {
+                    onSuccess: () => {
+                      markSaved()
+                    },
+                  },
+                )
+                mutate({
+                  ...dataset,
+                  prompts: [...dataset.prompts, prompt],
+                })
+                setActivePrompt(prompt.id)
+              }}
               size="sm"
             >
               Add Prompt
             </Button>
           </Group>
 
-          {prompts.map((prompt, i) => (
-            <Tabs.Panel key={i} value={`prompt-${i + 1}`}>
+          {dataset?.prompts.map((prompt, i) => (
+            <Tabs.Panel key={i} value={prompt.id}>
               <PromptTab
-                prompt={prompt}
-                setPrompt={(updatedPrompt) =>
-                  handlers.setItem(i, updatedPrompt)
-                }
+                promptId={prompt.id}
+                markSaved={markSaved}
+                onDelete={() => {
+                  mutate({
+                    ...dataset,
+                    prompts: dataset.prompts.filter((p) => p.id !== prompt.id),
+                  })
+                }}
               />
             </Tabs.Panel>
           ))}
         </Tabs>
 
-        <Button
+        {/* <Button
           display="inline-block"
           ml="auto"
           loading={isInserting || isUpdating}
-          onClick={async () => {
-            if (!isEdit) {
-              const { datasetId } = await insertDataset({
-                slug: generateSlug(2),
-                prompts,
-              })
-              router.push(`/datasets/${datasetId}`)
-            } else {
-              const { datasetId } = await updateDataset({
-                datasetId: router.query.id,
-                prompts,
-              })
-
-              router.push(`/datasets/${datasetId}`)
-            }
-
-            notifications.show({
-              icon: <IconCheck size={18} />,
-              color: "teal",
-              title: "Dataset saved",
-              message: "",
-            })
-          }}
+          onClick={() => saveDataset()}
         >
           Save Dataset
-        </Button>
+        </Button> */}
       </Stack>
     </Container>
   )

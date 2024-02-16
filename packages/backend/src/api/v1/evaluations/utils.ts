@@ -7,21 +7,21 @@ import { FilterLogic } from "shared"
 interface RunEvalParams {
   evaluationId: string
   promptId: string
+  checklistId: string
   model: string
   prompt: any
   extra: any
   variation: any
-  checks: FilterLogic
 }
 
 export async function runEval({
   evaluationId,
   promptId,
+  checklistId,
   model,
   prompt,
   extra,
   variation,
-  checks,
 }: RunEvalParams) {
   try {
     console.log(`=============================`)
@@ -29,6 +29,11 @@ export async function runEval({
       `Running eval for ${model} with variation ${JSON.stringify(variation.variables)}`,
     )
     const { variables, idealOutput, context } = variation
+
+    const [checklist] =
+      await sql`select * from checklist where id = ${checklistId}`
+
+    const checks = checklist.data
 
     // run AI query
     const createdAt = new Date()
@@ -98,6 +103,7 @@ export async function runEval({
     console.error(error)
   }
 }
+
 export async function getEvaluation(evaluationId: string) {
   const rows = await sql`
     select

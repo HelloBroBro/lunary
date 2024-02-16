@@ -39,9 +39,9 @@ const APP_MENU = [
   { label: "Logs", icon: IconListSearch, link: "/logs" },
   { label: "Users", icon: IconUsers, link: "/users" },
   { label: "Prompts", icon: IconPlayerPlay, link: "/prompts" },
-  { label: "Datasets", icon: IconDatabase, link: "/datasets" },
   { label: "Radars", icon: IconShieldBolt, link: "/radars" },
   { label: "Evaluations", icon: IconFlask2Filled, link: "/evaluations" },
+  // { label: "Datasets", icon: IconDatabase, link: "/datasets" },
   { label: "Settings & Keys", icon: IconSettings, link: "/settings" },
 ]
 

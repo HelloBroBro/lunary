@@ -22,18 +22,8 @@ import { useTemplate, useTemplates } from "@/utils/dataHooks"
 import { useHover } from "@mantine/hooks"
 import { modals } from "@mantine/modals"
 import { notifications } from "@mantine/notifications"
-import { formatDistanceToNow } from "date-fns"
 
-const slugify = (text: string): string =>
-  text
-    .toString()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-]+/g, "")
-    .replace(/--+/g, "-")
+import { cleanSlug, formatCompactFromNow } from "@/utils/format"
 
 export const defaultTemplateVersion = {
   content: [
@@ -97,7 +87,7 @@ const TemplateListItem = ({
   const applyRename = async (name) => {
     setRename(null)
     // make sure it's a valid slug
-    const slugified = slugify(name)
+    const slugified = cleanSlug(name)
 
     if (slugified === "" || slugified === template.slug) return
 
@@ -239,14 +229,7 @@ const TemplateListItem = ({
                 )}
 
                 <Text c="dimmed" span size="xs" ml="auto">
-                  {formatDistanceToNow(new Date(version?.createdAt), {
-                    addSuffix: true,
-                  })
-                    .replace("less than", "<")
-                    .replace("about", "~")
-                    .replace("minute", "min")
-                    .replace(" hours", "h")
-                    .replace(" hour", "h")}
+                  {formatCompactFromNow(version?.createdAt)}
                 </Text>
               </Group>
             }
