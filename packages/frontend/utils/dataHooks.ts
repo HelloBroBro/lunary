@@ -149,9 +149,7 @@ export function useOrg() {
 export function useProjects() {
   const { isSignedIn } = useAuth()
 
-  const { data, isLoading, isValidating, mutate } = useSWR(
-    () => isSignedIn && `/projects`,
-  )
+  const { data, isLoading, mutate } = useSWR(() => isSignedIn && `/projects`)
 
   const { trigger: insertMutation } = useSWRMutation(
     () => `/projects`,
@@ -233,13 +231,16 @@ export function useTemplate(id: string) {
   } = useProjectSWR(id && `/templates/${id}`)
 
   const { trigger: update } = useProjectMutation(
-    `/templates/${id}`,
+    id && `/templates/${id}`,
     fetcher.patch,
   )
 
   const { trigger: remove } = useProjectMutation(
-    `/templates/${id}`,
+    id && `/templates/${id}`,
     fetcher.delete,
+    {
+      revalidate: false,
+    },
   )
 
   // insert mutation
