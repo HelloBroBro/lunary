@@ -29,7 +29,7 @@ const checkIsMessage = (obj) => {
 const checkIsRetrieverObjects = (obj) => {
   return Array.isArray(obj)
     ? obj.every(checkIsRetrieverObjects)
-    : typeof obj.title === "string" &&
+    : typeof obj?.title === "string" &&
         (typeof obj.source === "string" || obj.summary === "string")
 }
 
@@ -37,7 +37,7 @@ function RetrieverObject({ data, compact }) {
   return (
     <Card withBorder p="sm">
       <Flex direction="column" gap="sm">
-        {data.title && (
+        {data?.title && (
           <Text size="sm" w={700} mb="md">
             {data.title}
           </Text>
