@@ -211,7 +211,7 @@ async function handleStream(
 
       if (!choices[index]) {
         choices.splice(index, 0, {
-          message: { role, content, function_call, tool_calls: [] },
+          message: { role, content: "", function_call, tool_calls: [] },
         })
       }
 
@@ -282,7 +282,7 @@ async function handleStream(
 orgs.post("/playground", async (ctx: Context) => {
   const orgId = ctx.state.orgId as string
   const requestBodySchema = z.object({
-    content: z.array(z.any()),
+    content: z.array(z.any()).or(z.string()),
     extra: z.any(),
     variables: z.record(z.string()),
   })
