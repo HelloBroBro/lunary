@@ -193,11 +193,16 @@ export function useProject() {
     mutate(newProjects)
   }
 
-  async function drop() {
-    await dropMutation()
-    const newProjects = projects.filter((p) => p.id !== projectId)
-    setProjectId(newProjects[0]?.id)
-    mutate(newProjects)
+  async function drop(): Promise<Boolean> {
+    try {
+      const res = await dropMutation()
+      const newProjects = projects.filter((p) => p.id !== projectId)
+      setProjectId(newProjects[0]?.id)
+      mutate(newProjects)
+      return true
+    } catch (error) {
+      return false
+    }
   }
 
   return {
@@ -213,13 +218,17 @@ export function useTemplates() {
   const { data: templates, isLoading, mutate } = useProjectSWR(`/templates`)
 
   // insert mutation
-  const { trigger: insert } = useProjectMutation(`/templates`, fetcher.post)
+  const { trigger: insert, isMutating: isInserting } = useProjectMutation(
+    `/templates`,
+    fetcher.post,
+  )
 
   return {
     templates,
     insert,
     mutate,
     loading: isLoading,
+    isInserting,
   }
 }
 
