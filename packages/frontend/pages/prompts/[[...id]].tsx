@@ -19,7 +19,7 @@ import {
   Textarea,
   Tooltip,
 } from "@mantine/core"
-import { useHotkeys } from "@mantine/hooks"
+
 import {
   IconBolt,
   IconBracketsAngle,
@@ -52,6 +52,7 @@ import Empty from "@/components/Layout/Empty"
 import { MODELS } from "shared"
 import { usePromptVariables } from "@/utils/promptsHooks"
 import { openConfirmModal } from "@mantine/modals"
+import { useGlobalShortcut } from "@/utils/hooks"
 
 const ParamItem = ({ name, value }) => (
   <Group justify="space-between">
@@ -106,7 +107,7 @@ function Playground() {
 
   const [rename, setRename] = useState(null)
 
-  useHotkeys([
+  useGlobalShortcut([
     [
       "mod+S",
       () => {
@@ -355,7 +356,7 @@ function Playground() {
           const parsedLine = JSON.parse(item)
 
           setOutput(parsedLine.choices[0]?.message)
-          setOutputTokens(parsedLine.tokens)
+          setOutputTokens(parsedLine.usage?.completion_tokens || 0)
         }
 
         // The request has been aborted, stop reading the stream.
