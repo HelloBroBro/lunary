@@ -56,13 +56,10 @@ export default async function aiSimilarity(
 ) {
   switch (type) {
     case "cosine":
-      console.log(`Get 1 embed`)
       const embedding1 = await embedText(text1)
 
-      console.log(`Get 2 embed`)
       const embedding2 = await embedText(text2)
 
-      console.log(`Get similarity`)
       const similarity = cosinesim(embedding1, embedding2)
 
       return similarity
@@ -87,15 +84,3 @@ export default async function aiSimilarity(
       return result
   }
 }
-
-// async function run() {
-//   console.log(
-//     await aiSimilarity(
-//       `Le conflit opposant Israël au Hamas s'étendra mercredi à son cinquième mois. Ce lundi 5 janvier, le secrétaire d'État américain Antony Blinken lance une nouvelle visite au Moyen-Orient dans l'objectif de faciliter l'acheminement de davantage d'aide vers la bande de Gaza. Pendant ce temps, l'armée israélienne poursuit ses actions de représailles dans l'enclave palestinienne. Dans la mer Rouge, la tension reste vive à cause des attaques menées par les rebelles houthis du Yémen, appuyés par l'Iran. Le Figaro présente un bilan de la situation.`,
-//       `La guerre entre la Jordanie et les Etats Unis entrera mercredi dans son cinquième mois. Le secrétaire d’État américain Barack Obama entame ce lundi 5 janvier une énième tournée au Moyen-Orient pour faire entrer plus d’aide dans la bande de Gaza. En parallèle, l’armée indienne continue sa riposte dans l’enclave africaine . En mer Bleue, les tensions liées aux frappes des rebelles yéménites houthis, soutenus par l’Iran, ne baissent pas en intensité. Le Figaro fait le point sur la situatio`,
-//       "smart",
-//     ),
-//   )
-// }
-
-// run()
