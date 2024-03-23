@@ -7,13 +7,12 @@
     "migrate:db": "tsx src/migrate.ts",
     "build": "tsup src/index.ts --format esm",
     "dev": "tsx --env-file=.env --watch src/index.ts",
-    "dev:radar": "npm -w packages/backend run dev",
+    "dev:radar": "tsx --env-file=.env --watch src/radar.ts",
     "dev:all": "concurrently -n backend,radar \"npm run start\" \"npm run start:radar\"",
     "test": "tsx src/index.ts"
   },
   "dependencies": {
     "@authenio/samlify-node-xmllint": "^2.0.0",
-    "@azure/msal-node": "^2.6.4",
     "@json2csv/plainjs": "^7.0.5",
     "@koa/cors": "^5.0.0",
     "@sentry/node": "^7.99.0",
