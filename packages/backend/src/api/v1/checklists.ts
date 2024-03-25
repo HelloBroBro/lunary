@@ -1,14 +1,15 @@
+import { checkAccess } from "@/src/utils/authorization"
 import sql from "@/src/utils/db"
 import { clearUndefined } from "@/src/utils/ingest"
 import Context from "@/src/utils/koa"
 import Router from "koa-router"
-import { FilterLogic } from "shared"
+import { CheckLogic } from "shared"
 
 const checklists = new Router({
   prefix: "/checklists",
 })
 
-checklists.get("/", async (ctx: Context) => {
+checklists.get("/", checkAccess("checklists", "list"), async (ctx: Context) => {
   const { projectId } = ctx.state
   // TODO: full zod
   const { type } = ctx.query as { type: string }
@@ -20,22 +21,26 @@ checklists.get("/", async (ctx: Context) => {
   ctx.body = rows
 })
 
-checklists.get("/:id", async (ctx: Context) => {
-  const { projectId } = ctx.state
-  const { id } = ctx.params
+checklists.get(
+  "/:id",
+  checkAccess("checklists", "read"),
+  async (ctx: Context) => {
+    const { projectId } = ctx.state
+    const { id } = ctx.params
 
-  const [check] = await sql`select * from checklist 
+    const [check] = await sql`select * from checklist 
         where project_id = ${projectId} 
         and id = ${id}`
-  ctx.body = check
-})
+    ctx.body = check
+  },
+)
 
 checklists.post("/", async (ctx: Context) => {
   const { projectId, userId } = ctx.state
   const { slug, type, data } = ctx.request.body as {
     slug: string
     type: string
-    data: FilterLogic
+    data: CheckLogic
   }
 
   const [insertedCheck] = await sql`
@@ -56,7 +61,7 @@ checklists.patch("/:id", async (ctx: Context) => {
   const { id } = ctx.params
   const { slug, data } = ctx.request.body as {
     slug: string
-    data: FilterLogic
+    data: CheckLogic
   }
 
   const [updatedCheck] = await sql`
@@ -69,18 +74,22 @@ checklists.patch("/:id", async (ctx: Context) => {
   ctx.body = updatedCheck
 })
 
-checklists.delete("/:id", async (ctx: Context) => {
-  const { projectId } = ctx.state
-  const { id } = ctx.params
+checklists.delete(
+  "/:id",
+  checkAccess("checklists", "delete"),
+  async (ctx: Context) => {
+    const { projectId } = ctx.state
+    const { id } = ctx.params
 
-  await sql`
+    await sql`
     delete from checklist
     where project_id = ${projectId}
     and id = ${id}
     returning *
   `
 
-  ctx.status = 200
-})
+    ctx.status = 200
+  },
+)
 
 export default checklists

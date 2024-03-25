@@ -3,6 +3,7 @@ import Router from "koa-router"
 import { Context } from "koa"
 import postgres from "postgres"
 import { unCamelObject } from "@/src/utils/misc"
+import { checkAccess } from "@/src/utils/authorization"
 
 const versions = new Router({
   prefix: "/template_versions",
@@ -53,16 +54,19 @@ versions.get("/:id", async (ctx: Context) => {
   ctx.body = { ...version, template }
 })
 
-versions.patch("/:id", async (ctx: Context) => {
-  const { content, extra, testValues, isDraft } = ctx.request.body as {
-    id: string
-    content: any[]
-    extra: any
-    testValues: any
-    isDraft: boolean
-  }
+versions.patch(
+  "/:id",
+  checkAccess("prompts", "update"),
+  async (ctx: Context) => {
+    const { content, extra, testValues, isDraft } = ctx.request.body as {
+      id: string
+      content: any[]
+      extra: any
+      testValues: any
+      isDraft: boolean
+    }
 
-  const [templateVersion] = await sql`
+    const [templateVersion] = await sql`
     update template_version set
       content = ${sql.json(content)},
       extra = ${sql.json(unCamelObject(extra))},
@@ -72,7 +76,8 @@ versions.patch("/:id", async (ctx: Context) => {
     returning *
   `
 
-  ctx.body = templateVersion
-})
+    ctx.body = templateVersion
+  },
+)
 
 export default versions

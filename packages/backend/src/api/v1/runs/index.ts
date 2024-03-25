@@ -5,7 +5,8 @@ import Router from "koa-router"
 import ingest from "./ingest"
 import { fileExport } from "./export"
 import { deserializeLogic } from "shared"
-import { convertChecksToSQL } from "@/src/utils/filters"
+import { convertChecksToSQL } from "@/src/utils/checks"
+import { checkAccess } from "@/src/utils/authorization"
 
 const runs = new Router({
   prefix: "/runs",
@@ -92,11 +93,11 @@ runs.get("/", async (ctx: Context) => {
   const { projectId } = ctx.state
 
   const queryString = ctx.querystring
-  const deserializedFilters = deserializeLogic(queryString)
+  const deserializedChecks = deserializeLogic(queryString)
 
   const filtersQuery =
-    deserializedFilters?.length && deserializedFilters.length > 1 // first is always ["AND"]
-      ? convertChecksToSQL(deserializedFilters)
+    deserializedChecks?.length && deserializedChecks.length > 1 // first is always ["AND"]
+      ? convertChecksToSQL(deserializedChecks)
       : sql`type = 'llm'` // default to type llm
 
   const {
@@ -106,9 +107,9 @@ runs.get("/", async (ctx: Context) => {
     exportType,
   } = ctx.query as Query
 
-  let parentRunFilter = sql``
+  let parentRunCheck = sql``
   if (parentRunId) {
-    parentRunFilter = sql`and parent_run_id = ${parentRunId}`
+    parentRunCheck = sql`and parent_run_id = ${parentRunId}`
   }
 
   const rows = await sql`
@@ -124,7 +125,7 @@ runs.get("/", async (ctx: Context) => {
           left join external_user eu on r.external_user_id = eu.id
       where
           r.project_id = ${projectId}
-          ${parentRunFilter}
+          ${parentRunCheck}
           and (${filtersQuery})
       order by
           r.created_at desc
@@ -140,7 +141,7 @@ runs.get("/", async (ctx: Context) => {
   ctx.body = runs
 })
 
-runs.get("/usage", async (ctx) => {
+runs.get("/usage", checkAccess("logs", "read"), async (ctx) => {
   const { projectId } = ctx.state
   const { days, userId, daily } = ctx.query as {
     days: string
@@ -239,7 +240,7 @@ runs.get("/:id", async (ctx) => {
   ctx.body = formatRun(row)
 })
 
-runs.patch("/:id", async (ctx: Context) => {
+runs.patch("/:id", checkAccess("logs", "update"), async (ctx: Context) => {
   const { projectId } = ctx.state
   const { id } = ctx.params
   const { isPublic, feedback, tags } = ctx.request.body as {
@@ -262,7 +263,7 @@ runs.patch("/:id", async (ctx: Context) => {
   ctx.status = 200
 })
 
-runs.get("/:id/related", async (ctx) => {
+runs.get("/:id/related", checkAccess("logs", "read"), async (ctx) => {
   const id = ctx.params.id
 
   const related = await sql`
@@ -284,7 +285,7 @@ runs.get("/:id/related", async (ctx) => {
   ctx.body = related
 })
 
-runs.get("/:id/feedback", async (ctx) => {
+runs.get("/:id/feedback", checkAccess("logs", "read"), async (ctx) => {
   const { projectId } = ctx.state
   const { id } = ctx.params
 

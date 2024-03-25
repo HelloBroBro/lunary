@@ -1,11 +1,10 @@
+import { checkAccess } from "@/src/utils/authorization"
 import sql from "@/src/utils/db"
 import Router from "koa-router"
 
 const radars = new Router({
   prefix: "/radars",
 })
-
-// add a logger
 
 const DEFAULT_RADARS = [
   {
@@ -38,7 +37,8 @@ const DEFAULT_RADARS = [
     ],
   },
   {
-    description: "LLM answer contains PII (Personal Identifiable Information)",
+    description:
+      "Answer potentially contains PII (Personal Identifiable Information)",
     negative: true,
     view: [
       "AND",
@@ -50,34 +50,13 @@ const DEFAULT_RADARS = [
       },
     ],
     checks: [
-      "OR",
+      "AND",
       {
-        id: "entities",
+        id: "pii",
         params: {
-          field: "output",
+          field: "input",
           type: "contains",
-          entities: ["per", "loc"],
-        },
-      },
-      {
-        id: "email",
-        params: {
-          field: "output",
-          type: "contains",
-        },
-      },
-      {
-        id: "cc",
-        params: {
-          field: "output",
-          type: "contains",
-        },
-      },
-      {
-        id: "phone",
-        params: {
-          field: "output",
-          type: "contains",
+          entities: ["person", "location", "email", "cc", "phone", "ssn"],
         },
       },
     ],
@@ -95,34 +74,13 @@ const DEFAULT_RADARS = [
       },
     ],
     checks: [
-      "OR",
+      "AND",
       {
-        id: "entities",
+        id: "pii",
         params: {
           field: "input",
           type: "contains",
-          entities: ["per", "loc"],
-        },
-      },
-      {
-        id: "email",
-        params: {
-          field: "input",
-          type: "contains",
-        },
-      },
-      {
-        id: "cc",
-        params: {
-          field: "input",
-          type: "contains",
-        },
-      },
-      {
-        id: "phone",
-        params: {
-          field: "input",
-          type: "contains",
+          entities: ["person", "location", "email", "cc", "phone", "ssn"],
         },
       },
     ],
@@ -259,7 +217,7 @@ radars.get("/:radarId/chart", async (ctx) => {
   }))
 })
 
-radars.post("/", async (ctx) => {
+radars.post("/", checkAccess("radars", "create"), async (ctx) => {
   const { projectId, userId } = ctx.state
   const { description, view, checks, alerts, negative } = ctx.request.body as {
     description: string
@@ -285,7 +243,7 @@ radars.post("/", async (ctx) => {
   ctx.body = row
 })
 
-radars.patch("/:radarId", async (ctx) => {
+radars.patch("/:radarId", checkAccess("radars", "update"), async (ctx) => {
   const { projectId } = ctx.state
   const { radarId } = ctx.params
 
@@ -320,7 +278,7 @@ radars.patch("/:radarId", async (ctx) => {
   ctx.body = row
 })
 
-radars.delete("/:radarId", async (ctx) => {
+radars.delete("/:radarId", checkAccess("radars", "delete"), async (ctx) => {
   const { projectId } = ctx.state
   const { radarId } = ctx.params
 
