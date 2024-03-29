@@ -1,4 +1,4 @@
-import Koa, { Next } from "koa"
+import Koa from "koa"
 import bodyParser from "koa-bodyparser"
 import logger from "koa-logger"
 import prexit from "prexit"
@@ -15,14 +15,11 @@ import { errorMiddleware } from "./utils/errors"
 import { setDefaultBody } from "./utils/misc"
 import ratelimit from "./utils/ratelimit"
 import { initSentry, requestHandler, tracingMiddleWare } from "./utils/sentry"
-import Context from "./utils/koa"
-import { hasReadAccess } from "shared"
 
 checkDbConnection()
 setupCronJobs()
 initSentry()
 
-console.log("123")
 const app = new Koa()
 
 // Forward proxy headers
