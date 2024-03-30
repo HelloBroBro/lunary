@@ -149,7 +149,7 @@ function SAMLConfig() {
               <Table.Td>Assertion Consumer Service (ACS) URL:</Table.Td>
               <Table.Td>
                 <CopyInput
-                  value={`${process.env.API_URL}/auth/saml/${org?.id}/acs`}
+                  value={`${process.env.NEXT_PUBLIC_API_URL}/auth/saml/${org?.id}/acs`}
                 />
               </Table.Td>
             </Table.Tr>
@@ -157,7 +157,7 @@ function SAMLConfig() {
               <Table.Td>Single Logout Service (SLO) URL:</Table.Td>
               <Table.Td>
                 <CopyInput
-                  value={`${process.env.API_URL}/auth/saml/${org?.id}/slo`}
+                  value={`${process.env.NEXT_PUBLIC_API_URL}/auth/saml/${org?.id}/slo`}
                 />
               </Table.Td>
             </Table.Tr>
@@ -165,7 +165,7 @@ function SAMLConfig() {
               <Table.Td>Sign on URL:</Table.Td>
               <Table.Td>
                 <CopyInput
-                  value={`${process.env.NEXT_PUBLIC_API_URL || window.location.origin}/login`}
+                  value={`${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/login`}
                 />
               </Table.Td>
             </Table.Tr>
@@ -173,7 +173,7 @@ function SAMLConfig() {
               <Table.Td>Single Logout URL:</Table.Td>
               <Table.Td>
                 <CopyInput
-                  value={`${process.env.API_URL}/auth/saml/${org?.id}/slo`}
+                  value={`${process.env.NEXT_PUBLIC_API_URL}/auth/saml/${org?.id}/slo`}
                 />
               </Table.Td>
             </Table.Tr>
@@ -290,7 +290,7 @@ function UserMenu({ user, isInvitation }) {
             <Menu.Item
               onClick={() => {
                 navigator.clipboard.writeText(
-                  `${window.APP_URL}/join?token=${user.singleUseToken}`,
+                  `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/join?token=${user.singleUseToken}`,
                 )
                 notifications.show({
                   icon: <IconCheck size={18} />,
@@ -471,7 +471,7 @@ function InviteMemberCard() {
         })
         return
       } else {
-        const link = `${window.APP_URL}/join?token=${newUser.singleUseToken}`
+        const link = `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/join?token=${newUser.singleUseToken}`
         setIsLoading(false)
         setInviteLink(link)
         setOpened(true)
