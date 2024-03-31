@@ -84,7 +84,28 @@ const publicRoutes = [
   `/v1/evaluations/run`,
 ]
 
-// TODO: we need to refactor this / find a more elegant way to use this middleware because it doesn't make any sense what's hapenning here
+async function checkApiKey(ctx: Context, key: string) {
+  const [apiKey] = await sql`
+    select *,
+    (select org_id from project where project.id = api_key.project_id) as org_id
+    from api_key
+    where api_key.api_key = ${key}`
+
+  if (!apiKey) {
+    // Support public key = project id
+    const [project] =
+      await sql`select id, org_id from project where id = ${key}`
+
+    if (!project) {
+      ctx.throw(401, "Invalid API key")
+    }
+
+    return { type: "public", projectId: project.id, orgId: project.orgId }
+  } else {
+    return apiKey
+  }
+}
+
 export async function authMiddleware(ctx: Context, next: Next) {
   ctx.state.projectId = ctx.request?.query?.projectId as string
 
@@ -92,44 +113,60 @@ export async function authMiddleware(ctx: Context, next: Next) {
     typeof route === "string" ? route === ctx.path : route.test(ctx.path),
   )
 
-  const bearerToken = ctx.request?.headers?.authorization?.split(" ")[1]
+  const bearer = ctx.request?.headers?.authorization?.split(" ")[1] as string
+  const apiKey = ctx.request?.headers?.["x-api-key"] as string
 
-  if (isPublicRoute) {
-    if (validateUUID(bearerToken)) {
-      ctx.state.projectId = bearerToken as string
-    }
+  const key = bearer || apiKey
+
+  // For routes like signup, login, etc
+  if (isPublicRoute && !key) {
     await next()
     return
   }
+  // Check if API key is valid
+  // Support passing as bearer because legacy SDKs did that
+  else if (validateUUID(key)) {
+    console.log("key", key)
 
-  try {
-    if (!bearerToken) {
-      throw new Error("No bearer token provided.")
+    const { type, projectId, orgId } = await checkApiKey(ctx, key as string)
+    console.log({ type, projectId, orgId })
+
+    ctx.state.projectId = projectId
+    ctx.state.orgId = orgId
+
+    if (type === "public" && !isPublicRoute) {
+      ctx.throw(401, "This route requires a private API key")
     }
-    const { payload } = await verifyJwt<SessionData>(bearerToken)
 
-    ctx.state.userId = payload.userId
-    ctx.state.orgId = payload.orgId
+    if (type == "private") {
+      ctx.state.privateKey = true
+    }
+  } else {
+    // Check if JWT is valid
+    try {
+      if (!bearer) {
+        throw new Error("No bearer token provided.")
+      }
+      const { payload } = await verifyJwt<SessionData>(key)
 
-    if (ctx.state.projectId) {
-      // Check if user has access to project
+      ctx.state.userId = payload.userId
+      ctx.state.orgId = payload.orgId
 
-      const [project] = await sql`
+      if (ctx.state.projectId) {
+        // Check if user has access to project
+
+        const [project] = await sql`
         select * from account_project where account_id = ${ctx.state.userId} and project_id = ${ctx.state.projectId}
       `
 
-      if (!project) {
-        throw new Error("Project not found")
+        if (!project) {
+          throw new Error("Project not found")
+        }
       }
+    } catch (error) {
+      console.error(error)
+      ctx.throw(401, "Invalid access token")
     }
-  } catch (error) {
-    console.error(error)
-    ctx.status = 401
-    ctx.body = {
-      error: "Unauthorized",
-      message: "You must be logged in to access this page",
-    }
-    return
   }
 
   await next()
