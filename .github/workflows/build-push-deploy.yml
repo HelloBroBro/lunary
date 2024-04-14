@@ -17,7 +17,7 @@ jobs:
       - name: Check out the private Ops repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.ACCESS_TOKEN }}
+          token: ${{ secrets.GH_ACCESS_TOKEN }}
           submodules: "recursive"
 
       - name: Generate data
@@ -66,7 +66,10 @@ jobs:
           port: ${{ secrets.ML_PORT }}
           script: |
             docker pull lunary/ml:latest
-            docker run --rm -d -p 4242:4242 lunary/ml
+            if [ $(docker ps -aq -f name=ml) ]; then
+              docker stop ml 
+            fi
+            docker run --rm -d -p 4242:4242 --name ml lunary/ml
 
       - name: Deploy to Production
         uses: appleboy/ssh-action@master

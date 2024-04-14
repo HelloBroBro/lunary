@@ -9,7 +9,7 @@ import {
 import { jwtVerify } from "jose"
 import { z } from "zod"
 import { sendEmail } from "@/src/utils/sendEmail"
-import { signJwt } from "./auth/utils"
+import { signJWT } from "./auth/utils"
 import { roles } from "shared"
 import { checkAccess } from "@/src/utils/authorization"
 
@@ -54,6 +54,7 @@ users.get("/me/org", async (ctx: Context) => {
     `
 
   org.users = users
+  org.license = ctx.state.license
   ctx.body = org
 })
 
@@ -182,7 +183,7 @@ users.post("/", checkAccess("teamMembers", "create"), async (ctx: Context) => {
   `
   const orgUserCount = orgUserCountResult.count
 
-  const token = await signJwt({ email, orgId }, FIFTEEN_DAYS)
+  const token = await signJWT({ email, orgId }, FIFTEEN_DAYS)
   const userToInsert = {
     email,
     orgId,
