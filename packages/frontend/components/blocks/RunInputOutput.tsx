@@ -1,8 +1,8 @@
+import { useRun, useUser } from "@/utils/dataHooks"
 import {
   Badge,
   Button,
   Card,
-  Flex,
   Group,
   HoverCard,
   ScrollArea,
@@ -10,15 +10,14 @@ import {
   Switch,
   Text,
 } from "@mantine/core"
+import { notifications } from "@mantine/notifications"
 import { IconPencilShare } from "@tabler/icons-react"
 import Link from "next/link"
-import SmartViewer from "../SmartViewer"
-import TokensBadge from "./TokensBadge"
-import { useRun, useUser } from "@/utils/dataHooks"
-import { notifications } from "@mantine/notifications"
-import CopyText, { SuperCopyButton } from "./CopyText"
 import { hasAccess } from "shared"
+import SmartViewer from "../SmartViewer"
+import CopyText, { SuperCopyButton } from "./CopyText"
 import ErrorBoundary from "./ErrorBoundary"
+import TokensBadge from "./TokensBadge"
 
 const isChatMessages = (obj) => {
   return Array.isArray(obj)
@@ -167,13 +166,21 @@ export default function RunInputOutput({
                     URL to share {run?.isPublic ? "" : "with your team"}
                   </Text>
                   <SuperCopyButton
-                    value={`${window.location.origin}/logs/${run.id}`}
+                    value={
+                      run?.isPublic
+                        ? `${window.location.origin}/logs/${run.id}`
+                        : `${window.location.origin}/logs?selected=${run.id}`
+                    }
                   />
                 </Group>
                 {hasAccess(user.role, "logs", "update") && (
                   <Switch
                     label={
-                      <Text size="sm" mr="sm">
+                      <Text
+                        size="sm"
+                        mr="sm"
+                        data-testid="make-log-public-switch"
+                      >
                         Make public
                       </Text>
                     }
