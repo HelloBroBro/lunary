@@ -64,7 +64,9 @@ function RenderCheckNode({
               value={currentOperator}
               onChange={(val) => {
                 const newNodeArray = [...node]
-                newNodeArray[0] = val
+                if (val !== null) {
+                  newNodeArray[0] = val
+                }
                 setNode(newNodeArray as CheckLogic)
               }}
             />
@@ -79,7 +81,7 @@ function RenderCheckNode({
   // ts assert node is LogicElement
   const s = node as LogicData
 
-  const check = checks.find((f) => f.id === s.id)
+  const check = checks.find((f) => f.id === s?.id)
 
   if (!check) return null
 
@@ -96,12 +98,18 @@ function RenderCheckNode({
 
           const UIItem = CHECKS_UI_DATA[check.id] || CHECKS_UI_DATA["other"]
 
-          const width =
-            isParamNotLabel && param.width
-              ? minimal
-                ? param.width
-                : param.width * 1.1
-              : undefined
+          function getWidth() {
+            if (!isParamNotLabel || !param.width) {
+              return
+            }
+
+            if (minimal) {
+              return param.width
+            }
+
+            return param.width * 1.1
+          }
+          const width = getWidth()
 
           const onChangeParam = (value) => {
             isParamNotLabel &&

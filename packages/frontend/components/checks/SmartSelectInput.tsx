@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useState } from "react"
+import { useProjectSWR } from "@/utils/dataHooks"
 import {
-  PillsInput,
-  Pill,
-  Combobox,
   CheckIcon,
+  Combobox,
   Group,
+  Loader,
+  Pill,
+  PillsInput,
   useCombobox,
 } from "@mantine/core"
-import { useProjectSWR } from "@/utils/dataHooks"
+import { useEffect, useState } from "react"
 
 export default function SmartCheckSelect({
   options,
@@ -23,17 +24,32 @@ export default function SmartCheckSelect({
   onChange,
 }) {
   const combobox = useCombobox({
-    onDropdownClose: () => combobox.resetSelectedOption(),
-    onDropdownOpen: () => combobox.updateSelectedOptionIndex("active"),
+    onDropdownClose: () => {
+      combobox.resetSelectedOption
+      combobox.resetSelectedOption()
+    },
+    onDropdownOpen: () => {
+      combobox.focusSearchInput()
+    },
   })
 
   const [search, setSearch] = useState("")
 
   const useSWRforData = typeof options === "function"
-  const { data: swrCheckData } = useProjectSWR(useSWRforData ? options() : null)
+  const { data: swrCheckData, isLoading } = useProjectSWR(
+    useSWRforData ? options() : null,
+  )
   const data = useSWRforData ? swrCheckData : options
 
   const fixedValue = value || (multiple ? [] : null)
+
+  const shouldDisplaySearch = data?.length > 5 || searchable !== false
+
+  useEffect(() => {
+    if (data && isLoading === false && shouldDisplaySearch) {
+      combobox.focusSearchInput()
+    }
+  }, [isLoading])
 
   const handleValueSelect = (val: string) => {
     setSearch("")
@@ -52,16 +68,23 @@ export default function SmartCheckSelect({
       : onChange(null)
   }
 
+  function getRenderedValues() {
+    if (fixedValue?.length >= 4) {
+      return <Pill>{fixedValue?.length} selected</Pill>
+    }
+    return fixedValue.map((item) => (
+      <Pill
+        key={item}
+        withRemoveButton
+        maw={130}
+        onRemove={() => handleValueRemove(item)}
+      >
+        {renderLabel(data?.find((d) => getItemValue(d) === item))}
+      </Pill>
+    ))
+  }
   const renderedValue = multiple
-    ? fixedValue.map((item) => (
-        <Pill
-          key={item}
-          withRemoveButton
-          onRemove={() => handleValueRemove(item)}
-        >
-          {renderLabel(data?.find((d) => getItemValue(d) === item))}
-        </Pill>
-      ))
+    ? getRenderedValues()
     : renderLabel(data?.find((d) => getItemValue(d) === value))
 
   function optionsFilter(item) {
@@ -105,47 +128,35 @@ export default function SmartCheckSelect({
           miw={width}
           w="min-content"
         >
-          <Pill.Group style={{ flexWrap: "nowrap" }}>
-            {renderedValue}
+          <Combobox.Target>
 
-            {(!renderedValue || !renderedValue?.length || searchable) && (
-              <Combobox.EventsTarget>
-                <PillsInput.Field
-                  onFocus={() => combobox.openDropdown()}
-                  onBlur={() => combobox.closeDropdown()}
-                  value={search}
-                  w={80}
-                  placeholder={placeholder}
-                  onChange={(event) => {
-                    combobox.updateSelectedOptionIndex()
-                    setSearch(event.currentTarget.value)
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Backspace" && search.length === 0) {
-                      event.preventDefault()
-                      handleValueRemove(value[value.length - 1])
-                    }
-                  }}
-                />
-              </Combobox.EventsTarget>
-            )}
-          </Pill.Group>
+            <Pill.Group style={{ flexWrap: "nowrap", overflow: "hidden" }}>
+              {renderedValue}
+            </Pill.Group>
+          </Combobox.Target>
         </PillsInput>
       </Combobox.DropdownTarget>
 
       <Combobox.Dropdown miw={180}>
-        {data?.length > 5 && searchable && (
-          <Combobox.Search
-            value={search}
-            onChange={(event) => setSearch(event.currentTarget.value)}
-            placeholder={"Search..."}
-          />
-        )}
+        <Combobox.Search
+          value={search}
+          display={shouldDisplaySearch ? "initial" : "none"}
+          onChange={(event) => setSearch(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Backspace" && search.length === 0) {
+              event.preventDefault()
+              handleValueRemove(value[value.length - 1])
+            }
+          }}
+          placeholder={"Search..."}
+        />
         <Combobox.Options>
           {renderedOptions?.length > 0 ? (
             renderedOptions
           ) : (
-            <Combobox.Empty>Nothing found...</Combobox.Empty>
+            <Combobox.Empty>
+              {isLoading ? <Loader size="sm" /> : "Nothing found..."}
+            </Combobox.Empty>
           )}
         </Combobox.Options>
       </Combobox.Dropdown>
