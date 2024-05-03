@@ -48,6 +48,7 @@ export async function handleStream(
       tokens += 1
 
       const chunk = part.choices[0]
+      if (!chunk) continue // Happens with AzureOpenai for first element
 
       const { index, delta } = chunk
 
