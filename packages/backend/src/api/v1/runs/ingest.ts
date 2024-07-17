@@ -26,6 +26,7 @@ async function registerRunEvent(
     type,
     userId,
     templateId,
+    templateVersionId,
     userProps,
     event: eventName,
     runId,
@@ -47,8 +48,9 @@ async function registerRunEvent(
     tags = metadata?.tags
   }
 
-  if (!templateId) {
-    templateId = metadata?.templateId
+  if (!templateVersionId) {
+    templateVersionId =
+      templateId || metadata?.templateId || metadata?.templateVersionId
   }
 
   let parentRunIdToUse = parentRunId
@@ -122,7 +124,7 @@ async function registerRunEvent(
           status: "started",
           params: params || extra,
           metadata,
-          templateVersionId: templateId,
+          templateVersionId,
           parentRunId: parentRunIdToUse,
           input,
           runtime,
@@ -132,10 +134,13 @@ async function registerRunEvent(
   } else if (eventName === "end") {
     let cost = undefined
 
-    if (type === "llm") {
-      const [runData] = await sql`
+    const [runData] = await sql`
         select created_at, input, params, name from run where id = ${runId}
       `
+    if (typeof runData.metadata === "object") {
+      metadata = { ...runData.metadata, metadata }
+    }
+    if (type === "llm") {
       cost = await calcRunCost({
         type,
         promptTokens: tokensUsage?.prompt,
@@ -153,6 +158,7 @@ async function registerRunEvent(
       promptTokens: tokensUsage?.prompt,
       completionTokens: tokensUsage?.completion,
       cost,
+      metadata,
     }
 
     if (input) {

@@ -101,7 +101,7 @@ function formatRun(run: any) {
     params: processParams(run.params),
 
     metadata: run.metadata,
-    user: {
+    user: run.externalUserId && {
       id: run.externalUserId,
       externalId: run.userExternalId,
       createdAt: run.userCreatedAt,
@@ -250,9 +250,16 @@ runs.get("/", async (ctx: Context) => {
   }
 
   const total = await sql`
-    select count(*) as count
-    from public.run r
-    where r.project_id = ${projectId}
+    select 
+      count(*) as count
+    from 
+      public.run r
+      left join external_user eu on r.external_user_id = eu.id
+      left join run_parent_feedback_cache rpfc on r.id = rpfc.id
+      left join template_version tv on r.template_version_id = tv.id
+      left join template t on tv.template_id = t.id
+    where 
+      r.project_id = ${projectId}
       ${parentRunCheck}
       and (${filtersQuery})
   `
