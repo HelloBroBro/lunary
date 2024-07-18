@@ -229,12 +229,22 @@ export default function Logs() {
     clearOnDefault: true,
   })
 
+
+  const {
+    view,
+    update: updateView,
+    remove: removeView,
+    loading: viewLoading,
+  } = useView(viewId)
+
   const serializedChecks = useMemo(() => {
+    // TODO: find a better way, because it will call two times /runs
+    if (view) {
+      return serializeLogic(view.data)
+    }
     const checksWithType = editCheck(checks, "type", { type })
     return serializeLogic(checksWithType)
-  }, [checks, type])
-
-  const { view, update: updateView, remove: removeView } = useView(viewId)
+  }, [checks, type, view])
 
   const { evaluators } = useEvaluators()
 
@@ -255,7 +265,6 @@ export default function Logs() {
     if (type === "llm" && Array.isArray(evaluators)) {
       for (const evaluator of evaluators) {
         const id = "enrichment-" + evaluator.id
-        console.log(id)
 
         if (newColumns.llm.map(({ accessorKey }) => accessorKey).includes(id)) {
           continue
@@ -367,7 +376,7 @@ export default function Logs() {
 
       const newView = await insertView({
         name: "New View",
-        data: checks,
+        data: editCheck(checks, "type", { type }),
         columns: visibleColumns,
         icon,
       })
@@ -375,7 +384,7 @@ export default function Logs() {
       setViewId(newView.id)
     } else {
       await updateView({
-        data: checks,
+        data: editCheck(checks, "type", { type }),
         columns: visibleColumns,
       })
 
@@ -452,7 +461,13 @@ export default function Logs() {
 
   return (
     <Empty
-      enable={!loading && !projectLoading && project && !project.activated}
+      enable={
+        !viewLoading &&
+        !loading &&
+        !projectLoading &&
+        project &&
+        !project.activated
+      }
       Icon={IconBrandOpenai}
       title="Waiting for recordings..."
       showProjectId
@@ -517,7 +532,7 @@ export default function Logs() {
             <Group>
               {view && (
                 <Group gap="xs">
-                  <IconPicker
+                  {/* <IconPicker
                     size={26}
                     variant="light"
                     value={view.icon}
@@ -526,7 +541,7 @@ export default function Logs() {
                         icon,
                       })
                     }}
-                  />
+                  /> */}
                   <RenamableField
                     defaultValue={view.name}
                     onRename={(newName) => {
@@ -542,12 +557,12 @@ export default function Logs() {
                       </ActionIcon>
                     </Menu.Target>
                     <Menu.Dropdown>
-                      <Menu.Item
+                      {/* <Menu.Item
                         leftSection={<IconStackPop size={16} />}
                         onClick={() => duplicateView()}
                       >
                         Duplicate
-                      </Menu.Item>
+                      </Menu.Item> */}
                       <Menu.Item
                         color="red"
                         leftSection={<IconTrash size={16} />}
@@ -559,12 +574,14 @@ export default function Logs() {
                   </Menu>
                 </Group>
               )}
-              <CheckPicker
-                minimal
-                value={checks}
-                onChange={setChecks}
-                restrictTo={(f) => CHECKS_BY_TYPE[type].includes(f.id)}
-              />
+              {!view && (
+                <CheckPicker
+                  minimal
+                  value={checks}
+                  onChange={setChecks}
+                  restrictTo={(f) => CHECKS_BY_TYPE[type].includes(f.id)}
+                />
+              )}
             </Group>
             {!!showSaveView && (
               <Button
