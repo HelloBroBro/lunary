@@ -155,10 +155,10 @@ async function registerRunEvent(
     let cost = undefined
 
     const [runData] = await sql`
-        select created_at, input, params, name from run where id = ${runId}
+        select created_at, input, params, name, metadata from run where id = ${runId}
       `
-    if (typeof runData?.metadata === "object") {
-      metadata = { ...runData.metadata, metadata }
+    if (typeof runData?.metadata === "object" && metadata) {
+      metadata = { ...runData.metadata, ...metadata }
     }
     if (type === "llm") {
       cost = await calcRunCost({
@@ -183,6 +183,9 @@ async function registerRunEvent(
       completionTokens: tokensUsage?.completion,
       cost,
       metadata,
+    }
+    if (!runToInsert.metadata) {
+      delete runToInsert.metadata
     }
 
     if (input) {
