@@ -2,6 +2,7 @@ import * as Sentry from "@sentry/node";
 import { setTimeout } from "timers/promises";
 import sql from "./db";
 import { findAsyncSequential } from "./misc";
+import RE2 from "re2";
 
 interface ModelCost {
   models: string[];
@@ -212,15 +213,8 @@ export async function calcRunCost(run: any) {
 
     const mapping = await findAsyncSequential(mappings, async (mapping) => {
       try {
-        const regex = new RegExp(mapping.pattern);
-
-        // Add a timeout to protect against regex slow/attacks
-        const timeoutMs = 200;
-
-        const testPromise = regex.test(run.name);
-        const timeoutPromise = setTimeout(timeoutMs, false);
-
-        return await Promise.race([testPromise, timeoutPromise]);
+        const regex = new RE2(mapping.pattern);
+        return regex.test(run.name);
       } catch (error) {
         console.error(`Invalid regex pattern: ${mapping.pattern}`, error);
         return false;
@@ -261,7 +255,7 @@ export async function calcRunCost(run: any) {
       outputCost = (outputCost * outputUnits) / 1_000_000;
     }
 
-    const finalCost = Number((inputCost + outputCost).toFixed(5));
+    const finalCost = Number((inputCost + outputCost).toFixed(10));
 
     if (finalCost === 0) {
       return calcRunCostLegacy(run);
