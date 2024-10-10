@@ -20,8 +20,10 @@ import Router, { useRouter } from "next/router";
 import RenamableField from "@/components/blocks/RenamableField";
 import { SettingsCard } from "@/components/blocks/SettingsCard";
 import CheckPicker from "@/components/checks/Picker";
+import DataWarehouseCard from "@/components/settings/data-warehouse";
 import config from "@/utils/config";
 import {
+  useLunaryVersion,
   useOrg,
   useProject,
   useProjectRules,
@@ -33,19 +35,16 @@ import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import {
   IconCheck,
-  IconDatabaseShare,
   IconFilter,
   IconIdBadge,
   IconPencil,
   IconRefreshAlert,
-  IconShield,
   IconShieldCog,
 } from "@tabler/icons-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckLogic, hasAccess } from "shared";
 import useSWR from "swr";
-import DataWarehouseCard from "@/components/settings/data-warehouse";
 
 function Keys() {
   const [regenerating, setRegenerating] = useState(false);
@@ -274,9 +273,11 @@ function SmartDataRule() {
   );
 }
 
-export default function AppAnalytics() {
+export default function Settings() {
   const { org } = useOrg();
   const { update, project, setProjectId, drop, dropLoading } = useProject();
+
+  const { backendVersion, frontendVersion } = useLunaryVersion();
   const router = useRouter();
 
   const { user } = useUser();
@@ -320,9 +321,7 @@ export default function AppAnalytics() {
           formatter={(val) => `${val} runs`}
           props={["count"]}
         />
-
         {user.role !== "viewer" && <Keys />}
-
         <SettingsCard title={<>Custom Models 🧠</>} align="start">
           <Button
             color="blue"
@@ -335,9 +334,7 @@ export default function AppAnalytics() {
             Edit Mappings
           </Button>
         </SettingsCard>
-
         <SmartDataRule />
-
         <SettingsCard
           title={<>Guardrails 🔒</>}
           align="start"
@@ -356,9 +353,7 @@ export default function AppAnalytics() {
         >
           <Button>Open Guardrails settings</Button>
         </SettingsCard>
-
         <DataWarehouseCard />
-
         {user && hasAccess(user.role, "projects", "delete") && (
           <SettingsCard title="Danger Zone" align="start">
             <Text>
@@ -399,6 +394,21 @@ export default function AppAnalytics() {
               </Popover.Dropdown>
             </Popover>
           </SettingsCard>
+        )}
+
+        {(frontendVersion || backendVersion) && (
+          <Group justify="flex-end">
+            {frontendVersion && (
+              <Text c="dimmed" size="sm">
+                Frontend: {frontendVersion}
+              </Text>
+            )}
+            {backendVersion && (
+              <Text c="dimmed" size="sm">
+                Backend: {backendVersion}
+              </Text>
+            )}
+          </Group>
         )}
       </Stack>
     </Container>
