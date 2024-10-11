@@ -305,7 +305,7 @@ runs.use("/ingest", ingest.routes());
 
 /**
  * @openapi
- * /api/v1/runs:
+ * /v1/runs:
  *   get:
  *     summary: Get runs
  *     tags: [Runs]
@@ -642,7 +642,7 @@ runs.get("/count", async (ctx: Context) => {
 
 /**
  * @openapi
- * /api/v1/runs/usage:
+ * /v1/runs/usage:
  *   get:
  *     tags: [Runs]
  *     summary: Get run usage statistics
@@ -764,7 +764,7 @@ runs.get("/:id/public", async (ctx) => {
 
 /**
  * @openapi
- * /api/v1/runs/{id}:
+ * /v1/runs/{id}:
  *   get:
  *     summary: Get a specific run
  *     description: Retrieve detailed information about a specific run by its ID.
@@ -845,7 +845,7 @@ runs.get("/:id", async (ctx) => {
 
 /**
  * @openapi
- * /api/v1/runs/{id}:
+ * /v1/runs/{id}:
  *   patch:
  *     summary: Update a run
  *     description: This endpoint allows updating the public visibility status and tags of a run. The `isPublic` field can be set to true or false to change the run's visibility. The `tags` field can be updated with an array of strings or set to null to remove all tags.
@@ -909,7 +909,7 @@ runs.patch("/:id", checkAccess("logs", "update"), async (ctx: Context) => {
 
 /**
  * @openapi
- * /api/v1/runs/{id}/feedback:
+ * /v1/runs/{id}/feedback:
  *   patch:
  *     summary: Update run feedback
  *     tags: [Runs]
@@ -1022,6 +1022,48 @@ runs.get("/:id/feedback", async (ctx) => {
   if (!row) return ctx.throw(404, "Run not found");
 
   ctx.body = row.feedback;
+});
+
+/**
+ * @openapi
+ * /v1/runs/{id}:
+ *   delete:
+ *     summary: Delete a run
+ *     description: Delete a specific run by its ID. This action is irreversible.
+ *     tags: [Runs]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       204:
+ *         description: Run successfully deleted
+ *       403:
+ *         description: Forbidden - User doesn't have permission to delete runs
+ *       404:
+ *         description: Run not found
+ */
+runs.delete("/:id", checkAccess("logs", "delete"), async (ctx: Context) => {
+  const { id } = z.object({ id: z.string().uuid() }).parse(ctx.params);
+  const { projectId } = ctx.state;
+
+  const [deletedRun] = await sql`
+    delete 
+      from run
+    where 
+      id = ${id}
+      and project_id = ${projectId}
+    returning id
+  `;
+
+  if (!deletedRun) {
+    ctx.status = 404;
+    return;
+  }
+
+  ctx.status = 200;
 });
 
 export default runs;

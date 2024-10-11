@@ -22,9 +22,9 @@ export function unCamelExtras(version: any) {
 }
 /**
  * @openapi
- * /api/v1/template-versions/latest:
+ * /v1/template-versions/latest:
  *   get:
- *     summary: Get the latest version of a template
+ *     summary: Get the latest version
  *     description: |
  *       This is the most common endpoint you'll use when working with prompt templates.
  *
@@ -120,7 +120,7 @@ versions.get("/:id", async (ctx: Context) => {
 
 /**
  * @openapi
- * /api/v1/template-versions/{id}:
+ * /v1/template-versions/{id}:
  *   patch:
  *     summary: Update a template version
  *     tags: [Templates]

@@ -6,7 +6,6 @@
     "start:realtime-evaluators": "tsx src/realtime-evaluators.ts",
     "dev:realtime-evaluators": "tsx --env-file=.env --watch src/realtime-evaluators.ts",
     "migrate:db": "tsx src/migrate.ts",
-    "openapi": "tsx src/openapi.ts",
     "build": "tsup src/index.ts --format esm",
     "dev": "tsx --env-file=.env --watch src/index.ts",
     "test": "tsx src/index.ts"
@@ -60,6 +59,8 @@
     "@types/koa-router": "^7.4.8",
     "@types/node": "^22.5.4",
     "@types/node-cron": "^3.0.11",
-    "@types/nodemailer": "^6.4.15"
+    "@types/nodemailer": "^6.4.15",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "openapi": "^1.0.1"
   }
 }
